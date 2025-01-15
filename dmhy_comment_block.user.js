@@ -2,7 +2,7 @@
 // @name         DMHY Comment Block
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.1
+// @version      1.0.2
 // @description  Block users and keywords in dmhy comment section
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @author       xkbkx5904
@@ -237,38 +237,49 @@ function checkAndRetryHandleComments() {
 
 // 添加管理界面
 function addBlocklistUI() {
-    // 检查是否存在主屏蔽脚本的UI
-    const mainBlocklistUI = document.getElementById('dmhy-blocklist-ui');
-    
-    if (mainBlocklistUI) {
-        // 建议添加延迟确保主脚本按钮已完全初始化
-        setTimeout(() => {
+    // 添加重试机制来检查主UI
+    const maxAttempts = 5;
+    let attempts = 0;
+
+    function checkAndAddUI() {
+        const mainBlocklistUI = document.getElementById('dmhy-blocklist-ui');
+        
+        if (mainBlocklistUI) {
             const mainButton = mainBlocklistUI.querySelector('button');
             if (mainButton) {
                 mainButton.textContent = '管理种子黑名单';
             }
             
-            // 检查是否已存在评论黑名单按钮，避免重复添加
+            // 检查是否已存在评论黑名单按钮
             if (!document.getElementById('show-comment-blocklist')) {
                 const button = document.createElement('button');
                 button.id = 'show-comment-blocklist';
                 button.textContent = '管理评论黑名单';
                 button.style.marginTop = '5px';
-                button.style.display = 'block'; // 确保按钮垂直排列
+                button.style.display = 'block';
                 mainBlocklistUI.appendChild(button);
                 button.addEventListener('click', showBlocklistManager);
             }
-        }, 100);
-    } else {
-        // 如果不存在主脚本，创建独立的UI
-        const uiHtml = `
-            <div id="dmhy-comment-blocklist-ui" style="position:fixed;left:10px;top:10px;z-index:9999;">
-                <button id="show-comment-blocklist">管理评论黑名单</button>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', uiHtml);
-        document.getElementById('show-comment-blocklist')?.addEventListener('click', showBlocklistManager);
+        } else {
+            attempts++;
+            if (attempts < maxAttempts) {
+                // 如果还没找到主UI，继续尝试
+                setTimeout(checkAndAddUI, 200);
+            } else {
+                // 超过最大尝试次数，创建独立UI
+                const uiHtml = `
+                    <div id="dmhy-comment-blocklist-ui" style="position:fixed;left:10px;top:10px;z-index:9999;">
+                        <button id="show-comment-blocklist">管理评论黑名单</button>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', uiHtml);
+                document.getElementById('show-comment-blocklist')?.addEventListener('click', showBlocklistManager);
+            }
+        }
     }
+
+    // 开始检查
+    checkAndAddUI();
 }
 
 // 修改显示黑名单管理界面的函数
