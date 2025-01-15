@@ -3,8 +3,8 @@
 // @name:en      DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
 // @version      1.0.0
-// @description  Block users and keywords in dmhy comment section
-// @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
+// @description  屏蔽动漫花园评论区的用户和关键词
+// @description:en  Block users and keywords in dmhy comment section
 // @author       xkbkx5904
 // @license      MIT
 // @match        *://share.dmhy.org/topics/view/*
