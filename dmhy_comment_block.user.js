@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name         动漫花园评论区屏蔽助手
-// @name:en      DMHY Comment Block
+// @name         DMHY Comment Block
+// @name:zh-CN   动漫花园评论区屏蔽助手
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
 // @version      1.0.0
-// @description  屏蔽动漫花园评论区的用户和关键词
-// @description:en  Block users and keywords in dmhy comment section
+// @description  Block users and keywords in dmhy comment section
+// @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @author       xkbkx5904
 // @license      MIT
 // @match        *://share.dmhy.org/topics/view/*
@@ -16,6 +16,11 @@
 // @homepageURL  https://github.com/xkbkx5904/dmhy-comment-block
 // @updateURL    https://raw.githubusercontent.com/xkbkx5904/dmhy-comment-block/main/dmhy_comment_block.user.js
 // @downloadURL  https://raw.githubusercontent.com/xkbkx5904/dmhy-comment-block/main/dmhy_comment_block.user.js
+// @icon         https://share.dmhy.org/favicon.ico
+// @compatible   chrome
+// @compatible   firefox
+// @compatible   edge
+// @require      https://cdn.jsdelivr.net/npm/sweetalert2@11
 // ==/UserScript==
 
 // 用户黑名单列表
