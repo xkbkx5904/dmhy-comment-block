@@ -41,3 +41,4 @@ A userscript for blocking comments on share.dmhy.org. It helps you:
 3. Visit dmhy topic pages to use
 
 ## Development
+Totolly 100% base on AI
