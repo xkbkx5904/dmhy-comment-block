@@ -2,7 +2,7 @@
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @name         DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.4
+// @version      1.0.5
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @description  Block users and keywords in dmhy comment section
 // @author       xkbkx5904
@@ -378,10 +378,15 @@ function showBlocklistManager() {
         keywordItem.values = keywords;
 
         saveBlockList();
+        handleComments();  // 确保这个调用存在
         document.getElementById('comment-blocklist-manager')?.remove();
         document.getElementById('comment-blocklist-overlay')?.remove();
-        handleComments();
         showNotification('黑名单已更新');
+
+        // 强制重新处理所有评论
+        waitForComments().then(() => {
+            handleComments();
+        });
     });
 }
 
