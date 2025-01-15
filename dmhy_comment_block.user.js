@@ -143,7 +143,17 @@ function shouldBlockComment(username, content, commentId, userList, blockedKeywo
 
     // 检查用户名和ID
     const isBlocked = userList.some(user => {
-        // 如果匹配到用户名但没有ID，自动绑定ID
+        // 如果用户名是正则表达式，直接用正则匹配
+        if (user.username.startsWith('/') && user.username.endsWith('/')) {
+            try {
+                const regex = new RegExp(user.username.slice(1, -1));
+                return regex.test(username);
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 如果匹配到普通用户名但没有ID，自动绑定ID
         if (user.username === username && !user.userId && commentId) {
             user.userId = parseInt(commentId);
             saveBlockList();  // 保存更新后的黑名单
