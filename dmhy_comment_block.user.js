@@ -2,7 +2,7 @@
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @name         DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.3
+// @version      1.0.4
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @description  Block users and keywords in dmhy comment section
 // @author       xkbkx5904
@@ -428,7 +428,8 @@ function showNotification(message) {
     notification.style.cssText = `
         position: fixed;
         top: 20px;
-        right: 20px;
+        left: 50%;
+        transform: translateX(-50%);
         background: rgba(0, 0, 0, 0.8);
         color: white;
         padding: 10px 20px;
