@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         dmhy comment block
-// @name:zh-CN   动漫花园评论区屏蔽助手
+// @name         动漫花园评论区屏蔽助手
+// @name:en      DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
 // @version      1.0.0
 // @description  Block users and keywords in dmhy comment section
