@@ -2,7 +2,7 @@
 // @name         DMHY Comment Block
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.0
+// @version      1.0.1
 // @description  Block users and keywords in dmhy comment section
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @author       xkbkx5904
