@@ -2,7 +2,7 @@
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @name         DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.5
+// @version      1.0.7
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @description  Block users and keywords in dmhy comment section
 // @author       xkbkx5904
@@ -85,12 +85,12 @@ const SELECTORS = {
     CONTENT: '.comment_con span:last-child'
 };
 
-// 优化处理评论的函数
+// 修改 handleComments 函数
 function handleComments() {
     const comments = document.querySelectorAll(SELECTORS.COMMENT_ROW);
     if (!comments.length) return;
 
-    // 预先获取黑名单数据，避免重复查找
+    // 预先获取黑名单数据
     const userList = UserBlockList.find(item => item.type === 'users')?.values || [];
     const blockedKeywords = UserBlockList.find(item => item.type === 'keywords')?.values || [];
 
@@ -103,7 +103,7 @@ function handleComments() {
             const username = usernameEl.textContent.trim();
             const content = comment.querySelector(SELECTORS.CONTENT)?.textContent?.trim() || '';
 
-            // 处理用户名链接（如果还没有处理过）
+            // 处理用户名链接（保持原有逻辑）
             if (!usernameEl.querySelector('a')) {
                 const userLink = document.createElement('a');
                 userLink.href = `/topics/list?keyword=${encodeURIComponent(username)}`;
@@ -126,7 +126,8 @@ function handleComments() {
                 usernameEl.appendChild(userLink);
             }
 
-            // 检查是否需要屏蔽
+            // 重置显示状态并检查是否需要屏蔽
+            comment.style.removeProperty('display');  // 使用 removeProperty 来重置显示状态
             if (shouldBlockComment(username, content, commentId, userList, blockedKeywords)) {
                 comment.style.display = 'none';
             }
@@ -347,20 +348,13 @@ function showBlocklistManager() {
             UserBlockList.push(userList);
         }
 
-        // 保留现有用户的ID信息
-        const existingUsers = new Map(userList.values.map(user => [user.username, user.userId]));
-        
-        // 更新用户列表，保留已有ID并尝试查找新用户的ID
+        // 完全替换用户列表，而不是追加
         userList.values = usernames.map(username => {
-            const existingId = existingUsers.get(username);
-            if (existingId) {
-                // 如果已有ID，保留它
-                return { username, userId: existingId };
-            } else {
-                // 尝试查找新用户的ID
-                const newId = findUserIdByUsername(username);
-                return { username, userId: newId ? parseInt(newId) : null };
-            }
+            const existingUser = userList.values.find(u => u.username === username);
+            return {
+                username,
+                userId: existingUser?.userId || null
+            };
         });
 
         // 处理关键词
@@ -378,15 +372,13 @@ function showBlocklistManager() {
         keywordItem.values = keywords;
 
         saveBlockList();
-        handleComments();  // 确保这个调用存在
+        
+        // 强制重新处理所有评论
+        handleComments();
+        
         document.getElementById('comment-blocklist-manager')?.remove();
         document.getElementById('comment-blocklist-overlay')?.remove();
         showNotification('黑名单已更新');
-
-        // 强制重新处理所有评论
-        waitForComments().then(() => {
-            handleComments();
-        });
     });
 }
 
