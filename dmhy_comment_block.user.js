@@ -7,6 +7,7 @@
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @author       xkbkx5904
 // @license      MIT
+// @language     zh-CN
 // @match        *://share.dmhy.org/topics/view/*
 // @grant        GM_setValue
 // @grant        GM_getValue
