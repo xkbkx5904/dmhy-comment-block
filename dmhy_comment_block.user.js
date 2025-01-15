@@ -2,7 +2,7 @@
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @name         DMHY Comment Block
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.7
+// @version      1.0.8
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @description  Block users and keywords in dmhy comment section
 // @author       xkbkx5904
@@ -26,6 +26,89 @@
 
 // 用户黑名单列表
 let UserBlockList = [];
+
+// 缓存常用的 DOM 选择器结果
+const SELECTORS = {
+    COMMENT_TABLE: '#comment_recent',
+    COMMENT_ROW: 'tr[id^="comment"]',
+    USERNAME: '.username',
+    CONTENT: '.comment_con span:last-child'
+};
+
+// 正则表达式工具类
+const RegexUtils = {
+    isValid(pattern) {
+        if (!pattern.startsWith('/') || !pattern.endsWith('/')) return true;
+        try {
+            new RegExp(pattern.slice(1, -1));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    toRegex(pattern) {
+        if (pattern.startsWith('/') && pattern.endsWith('/')) {
+            return new RegExp(pattern.slice(1, -1));
+        }
+        return pattern;
+    },
+
+    test(pattern, text) {
+        if (pattern.startsWith('/') && pattern.endsWith('/')) {
+            try {
+                const regex = new RegExp(pattern.slice(1, -1));
+                return regex.test(text);
+            } catch {
+                return false;
+            }
+        }
+        return false;
+    }
+};
+
+// 黑名单管理类
+const BlockListManager = {
+    addUser(username, commentId = null) {
+        let userList = UserBlockList.find(item => item.type === 'users');
+        if (!userList) {
+            userList = { type: 'users', values: [] };
+            UserBlockList.push(userList);
+        }
+
+        const user = {
+            username,
+            userId: username.startsWith('/') ? null : commentId
+        };
+
+        userList.values.push(user);
+        saveBlockList();
+        handleComments();
+    },
+
+    updateUsers(usernames) {
+        let userList = UserBlockList.find(item => item.type === 'users');
+        if (!userList) {
+            userList = { type: 'users', values: [] };
+            UserBlockList.push(userList);
+        }
+
+        userList.values = usernames.map(username => ({
+            username,
+            userId: username.startsWith('/') ? null : 
+                userList.values.find(u => u.username === username)?.userId || null
+        }));
+    },
+
+    updateKeywords(keywords) {
+        let keywordItem = UserBlockList.find(item => item.type === 'keywords');
+        if (!keywordItem) {
+            keywordItem = { type: 'keywords', values: [] };
+            UserBlockList.push(keywordItem);
+        }
+        keywordItem.values = keywords.map(RegexUtils.toRegex);
+    }
+};
 
 // 从本地存储加载黑名单
 function loadBlockList() {
@@ -77,15 +160,7 @@ function saveBlockList() {
     }
 }
 
-// 缓存常用的 DOM 选择器结果
-const SELECTORS = {
-    COMMENT_TABLE: '#comment_recent',
-    COMMENT_ROW: 'tr[id^="comment"]',
-    USERNAME: '.username',
-    CONTENT: '.comment_con span:last-child'
-};
-
-// 修改 handleComments 函数
+// 处理评论显示
 function handleComments() {
     const comments = document.querySelectorAll(SELECTORS.COMMENT_ROW);
     if (!comments.length) return;
@@ -103,7 +178,7 @@ function handleComments() {
             const username = usernameEl.textContent.trim();
             const content = comment.querySelector(SELECTORS.CONTENT)?.textContent?.trim() || '';
 
-            // 处理用户名链接（保持原有逻辑）
+            // 处理用户名链接
             if (!usernameEl.querySelector('a')) {
                 const userLink = document.createElement('a');
                 userLink.href = `/topics/list?keyword=${encodeURIComponent(username)}`;
@@ -127,7 +202,7 @@ function handleComments() {
             }
 
             // 重置显示状态并检查是否需要屏蔽
-            comment.style.removeProperty('display');  // 使用 removeProperty 来重置显示状态
+            comment.style.removeProperty('display');
             if (shouldBlockComment(username, content, commentId, userList, blockedKeywords)) {
                 comment.style.display = 'none';
             }
@@ -137,47 +212,37 @@ function handleComments() {
     });
 }
 
-// 优化屏蔽判断函数
+// 判断是否需要屏蔽评论
 function shouldBlockComment(username, content, commentId, userList, blockedKeywords) {
     if (!username) return false;
 
-    // 检查用户名和ID
-    const isBlocked = userList.some(user => {
-        // 如果用户名是正则表达式，直接用正则匹配
-        if (user.username.startsWith('/') && user.username.endsWith('/')) {
-            try {
-                const regex = new RegExp(user.username.slice(1, -1));
-                return regex.test(username);
-            } catch (e) {
-                return false;
-            }
+    // 检查用户名
+    const isUserBlocked = userList.some(user => {
+        // 正则匹配
+        if (user.username.startsWith('/')) {
+            return RegexUtils.test(user.username, username);
         }
         
-        // 如果匹配到普通用户名但没有ID，自动绑定ID
-        if (user.username === username && !user.userId && commentId) {
+        // 普通用户名匹配
+        const isMatch = user.username === username;
+        if (isMatch && !user.userId && commentId) {
             user.userId = parseInt(commentId);
-            saveBlockList();  // 保存更新后的黑名单
+            saveBlockList();
         }
-        // 通过用户名或ID匹配
-        return user.username === username || (user.userId && user.userId === parseInt(commentId));
+        return isMatch || (user.userId && user.userId === parseInt(commentId));
     });
 
-    if (isBlocked) return true;
+    if (isUserBlocked) return true;
 
     // 检查关键词
-    if (content && blockedKeywords.length) {
-        return blockedKeywords.some(keyword => {
-            if (typeof keyword === 'string') {
-                return content.toLowerCase().includes(keyword.toLowerCase());
-            }
-            return keyword instanceof RegExp && keyword.test(content);
-        });
-    }
-
-    return false;
+    return Boolean(content) && blockedKeywords.some(keyword => 
+        typeof keyword === 'string' 
+            ? content.toLowerCase().includes(keyword.toLowerCase())
+            : keyword.test(content)
+    );
 }
 
-// 修改显示上下文菜单的函数
+// 显示右键菜单
 function showContextMenu(event, commentId) {
     const menu = document.getElementById('dmhy-comment-context-menu');
     if (!menu) return;
@@ -193,7 +258,7 @@ function showContextMenu(event, commentId) {
     if (blockUserOption) {
         blockUserOption.onclick = function(e) {
             e.stopPropagation();
-            addUserToBlocklist(commentId, username);
+            BlockListManager.addUser(username, commentId);
             menu.style.display = 'none';
         };
     }
@@ -207,28 +272,14 @@ function showContextMenu(event, commentId) {
         }
     };
 
-    // 添加滚动时关闭菜单
     window.addEventListener('scroll', closeMenu, { once: true });
-    
-    // 延迟添加点击监听器，避免立即触发
     setTimeout(() => {
         document.addEventListener('click', closeMenu);
     }, 0);
 }
 
-// 添加一个初始化后的检查
-function checkAndRetryHandleComments() {
-    console.log('Checking comments...');  // 添加调试日志
-    const comments = document.querySelectorAll('#comment_list .comment-item');
-    if (comments.length > 0) {
-        console.log('Found comments, processing...');  // 添加调试日志
-        handleComments();
-    }
-}
-
 // 添加管理界面
 function addBlocklistUI() {
-    // 添加重试机制来检查主UI
     const maxAttempts = 5;
     let attempts = 0;
 
@@ -241,7 +292,6 @@ function addBlocklistUI() {
                 mainButton.textContent = '管理种子黑名单';
             }
             
-            // 检查是否已存在评论黑名单按钮
             if (!document.getElementById('show-comment-blocklist')) {
                 const button = document.createElement('button');
                 button.id = 'show-comment-blocklist';
@@ -254,10 +304,8 @@ function addBlocklistUI() {
         } else {
             attempts++;
             if (attempts < maxAttempts) {
-                // 如果还没找到主UI，继续尝试
                 setTimeout(checkAndAddUI, 200);
             } else {
-                // 超过最大尝试次数，创建独立UI
                 const uiHtml = `
                     <div id="dmhy-comment-blocklist-ui" style="position:fixed;left:10px;top:10px;z-index:9999;">
                         <button id="show-comment-blocklist">管理评论黑名单</button>
@@ -269,13 +317,11 @@ function addBlocklistUI() {
         }
     }
 
-    // 开始检查
     checkAndAddUI();
 }
 
-// 修改显示黑名单管理界面的函数
+// 显示黑名单管理界面
 function showBlocklistManager() {
-    // 如果已存在管理界面，先移除
     const existingManager = document.getElementById('comment-blocklist-manager');
     const existingOverlay = document.getElementById('comment-blocklist-overlay');
     if (existingManager) existingManager.remove();
@@ -315,13 +361,11 @@ function showBlocklistManager() {
     const userList = UserBlockList.find(item => item.type === 'users')?.values || [];
     const keywords = UserBlockList.find(item => item.type === 'keywords')?.values || [];
 
-    // 填充用户名
     document.getElementById('blocked-usernames').value = userList
         .map(user => user.username)
-        .filter(username => username) // 过滤掉空值
+        .filter(username => username)
         .join('；');
 
-    // 填充关键词
     document.getElementById('comment-keywords').value = keywords.map(k => {
         if (k instanceof RegExp) {
             return `/${k.source}/`;
@@ -329,13 +373,12 @@ function showBlocklistManager() {
         return k;
     }).join('；');
 
-    // 绑定关闭按钮事件
+    // 绑定事件
     document.getElementById('close-comment-manager').addEventListener('click', function() {
         document.getElementById('comment-blocklist-manager')?.remove();
         document.getElementById('comment-blocklist-overlay')?.remove();
     });
 
-    // 绑定遮罩层点击事件
     document.getElementById('comment-blocklist-overlay').addEventListener('click', function(e) {
         if (e.target === this) {
             document.getElementById('comment-blocklist-manager')?.remove();
@@ -343,47 +386,36 @@ function showBlocklistManager() {
         }
     });
 
-    // 绑定保存按钮事件
+    // 保存按钮事件
     document.getElementById('save-comment-blocklist').addEventListener('click', function() {
-        // 处理用户名
         const usernames = document.getElementById('blocked-usernames').value
             .split(/[;；]/)
             .map(name => name.trim())
-            .filter(name => name);
+            .filter(Boolean);
 
-        // 更新用户列表
-        let userList = UserBlockList.find(item => item.type === 'users');
-        if (!userList) {
-            userList = { type: 'users', values: [] };
-            UserBlockList.push(userList);
-        }
-
-        // 完全替换用户列表，而不是追加
-        userList.values = usernames.map(username => {
-            const existingUser = userList.values.find(u => u.username === username);
-            return {
-                username,
-                userId: existingUser?.userId || null
-            };
-        });
-
-        // 处理关键词
         const keywords = document.getElementById('comment-keywords').value
             .split(/[;；]/)
             .map(k => k.trim())
-            .filter(k => k);
+            .filter(Boolean);
 
-        // 更新关键词
-        let keywordItem = UserBlockList.find(item => item.type === 'keywords');
-        if (!keywordItem) {
-            keywordItem = { type: 'keywords', values: [] };
-            UserBlockList.push(keywordItem);
+        // 验证正则表达式
+        const invalidUsername = usernames.find(name => !RegexUtils.isValid(name));
+        if (invalidUsername) {
+            showNotification(`用户名正则表达式错误: ${invalidUsername}`);
+            return;
         }
-        keywordItem.values = keywords;
+
+        const invalidKeyword = keywords.find(k => !RegexUtils.isValid(k));
+        if (invalidKeyword) {
+            showNotification(`关键词正则表达式错误: ${invalidKeyword}`);
+            return;
+        }
+
+        // 更新数据
+        BlockListManager.updateUsers(usernames);
+        BlockListManager.updateKeywords(keywords);
 
         saveBlockList();
-        
-        // 强制重新处理所有评论
         handleComments();
         
         document.getElementById('comment-blocklist-manager')?.remove();
@@ -392,7 +424,7 @@ function showBlocklistManager() {
     });
 }
 
-// 修改右键菜单的样式
+// 添加右键菜单
 function addContextMenu() {
     const menuHtml = `
         <div id="dmhy-comment-context-menu" style="
@@ -417,7 +449,6 @@ function addContextMenu() {
     `;
     document.body.insertAdjacentHTML('beforeend', menuHtml);
 
-    // 添加悬停效果
     const blockUserOption = document.getElementById('block-comment-user');
     if (blockUserOption) {
         blockUserOption.addEventListener('mouseover', () => {
@@ -429,7 +460,7 @@ function addContextMenu() {
     }
 }
 
-// 添加通知提示函数
+// 显示通知
 function showNotification(message) {
     const notification = document.createElement('div');
     notification.style.cssText = `
@@ -448,46 +479,13 @@ function showNotification(message) {
     notification.textContent = message;
     document.body.appendChild(notification);
 
-    // 2秒后自动消失
     setTimeout(() => {
         notification.style.opacity = '0';
         setTimeout(() => notification.remove(), 300);
     }, 2000);
 }
 
-// 修改添加用户到黑名单的函数
-function addUserToBlocklist(commentId, username) {
-    if (!username) return;
-    
-    // 查找或创建用户列表
-    let userList = UserBlockList.find(item => item.type === 'users');
-    if (!userList) {
-        userList = { type: 'users', values: [] };
-        UserBlockList.push(userList);
-    }
-
-    // 检查是否已存在
-    const existingUser = userList.values.find(u => u.username === username);
-    if (existingUser) {
-        // 如果存在且没有ID，则更新ID
-        if (!existingUser.userId && commentId) {
-            existingUser.userId = parseInt(commentId);
-            showNotification(`已更新用户 ${username} 的ID信息`);
-        }
-    } else {
-        // 添加新用户，包含ID（如果有）
-        userList.values.push({
-            username,
-            userId: commentId ? parseInt(commentId) : null
-        });
-        showNotification(`已添加用户 ${username} 到黑名单`);
-    }
-
-    saveBlockList();
-    handleComments();
-}
-
-// 优化等待评论区加载的函数
+// 等待评论区加载
 function waitForComments() {
     return new Promise((resolve) => {
         const commentTable = document.querySelector(SELECTORS.COMMENT_TABLE);
@@ -515,34 +513,17 @@ function waitForComments() {
     });
 }
 
-// 根据用户名查找用户ID
-function findUserIdByUsername(username) {
-    const comments = document.querySelectorAll(SELECTORS.COMMENT_ROW);
-    for (const comment of comments) {
-        const usernameEl = comment.querySelector(SELECTORS.USERNAME);
-        if (usernameEl && usernameEl.textContent.trim() === username) {
-            return comment.id.replace('comment', '');
-        }
-    }
-    return null;
-}
-
-// 修改初始化函数
+// 初始化
 (function() {
     'use strict';
     
-    // 1. 首先加载黑名单数据
     loadBlockList();
-    
-    // 2. 添加UI界面
     addBlocklistUI();
     addContextMenu();
 
-    // 3. 等待评论区出现后再处理
     waitForComments().then(() => {
         handleComments();
 
-        // 4. 设置评论区监听器
         const commentList = document.querySelector('#comment_list');
         if (commentList) {
             const observer = new MutationObserver((mutations) => {
