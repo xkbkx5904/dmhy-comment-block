@@ -2,7 +2,7 @@
 // @name         DMHY Comment Block
 // @name:zh-CN   动漫花园评论区屏蔽助手
 // @namespace    https://github.com/xkbkx5904/dmhy-comment-block
-// @version      1.0.2
+// @version      1.0.3
 // @description  Block users and keywords in dmhy comment section
 // @description:zh-CN  屏蔽动漫花园评论区的用户和关键词
 // @author       xkbkx5904
@@ -170,55 +170,34 @@ function showContextMenu(event, commentId) {
     const menu = document.getElementById('dmhy-comment-context-menu');
     if (!menu) return;
 
-    // 获取鼠标位置
-    const x = event.clientX;
-    const y = event.clientY;
-
-    // 获取视窗大小
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    // 获取菜单大小
-    const menuWidth = menu.offsetWidth;
-    const menuHeight = menu.offsetHeight;
-
-    // 计算菜单位置，确保不会超出视窗
-    let left = x;
-    let top = y;
-
-    if (x + menuWidth > viewportWidth) {
-        left = viewportWidth - menuWidth;
-    }
-
-    if (y + menuHeight > viewportHeight) {
-        top = viewportHeight - menuHeight;
-    }
-
-    // 设置菜单位置，使用 fixed 定位相对于视窗
     menu.style.position = 'fixed';
-    menu.style.left = left + 'px';
-    menu.style.top = top + 'px';
+    menu.style.left = event.clientX + 'px';
+    menu.style.top = event.clientY + 'px';
     menu.style.display = 'block';
     
-    // 获取用户名
     const username = event.target.textContent;
     
     const blockUserOption = document.getElementById('block-comment-user');
     if (blockUserOption) {
-        blockUserOption.onclick = function() {
+        blockUserOption.onclick = function(e) {
+            e.stopPropagation();
             addUserToBlocklist(commentId, username);
             menu.style.display = 'none';
         };
     }
 
-    // 添加点击事件监听器来关闭菜单
+    // 改进关闭菜单的逻辑
     const closeMenu = (e) => {
         if (!menu.contains(e.target)) {
             menu.style.display = 'none';
             document.removeEventListener('click', closeMenu);
+            document.removeEventListener('scroll', closeMenu);
         }
     };
 
+    // 添加滚动时关闭菜单
+    window.addEventListener('scroll', closeMenu, { once: true });
+    
     // 延迟添加点击监听器，避免立即触发
     setTimeout(() => {
         document.addEventListener('click', closeMenu);
